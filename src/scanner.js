@@ -45,7 +45,7 @@ class GolosLotoRoundVote extends Scanner {
         if(historyEntry[1].op[0] == "vote" && 
             historyEntry[1].op[1].voter == this.userid &&
             historyEntry[1].op[1].permlink == this.comment.permlink) {
-                log.debug("found vote " + historyEntry[1].op[1].permlink);
+                log.info("found vote " + historyEntry[1].op[1].permlink);
                 this.vote = historyEntry[1].op[1];
         }
 
@@ -69,7 +69,7 @@ class GolosLotoRoundTicket extends Scanner {
         if(historyEntry[1].op[0] == "comment" && 
             historyEntry[1].op[1].author == this.userid &&
             historyEntry[1].op[1].parent_permlink == this.comment.permlink) {
-                log.debug("found ticket " + historyEntry[1].op[1].permlink);
+                log.info("found ticket " + historyEntry[1].op[1].permlink);
                 this.ticket = historyEntry[1].op[1];
         }
         return (this.ticket != null

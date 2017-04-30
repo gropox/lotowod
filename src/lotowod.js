@@ -21,7 +21,7 @@ module.exports.run = async function() {
             
             await golos.scanUserHistory("golos.loto", scanner);
             if(scanner.comment) {
-                log.debug("found round start " + scanner.comment.permlink);
+                log.info("found round start " + scanner.comment.permlink);
                 
                 var users = Object.keys(global.settings.users);
                 
@@ -29,6 +29,9 @@ module.exports.run = async function() {
                     
                     let user = users[i];
                     let key = global.settings.users[users[i]];
+
+                    log.info("\nProcessing user " + user);
+
                     
                     let voteScanner = new Scanner.GolosLotoRoundVote(scanner.comment, user); 
                     let ticketScanner = new Scanner.GolosLotoRoundTicket(scanner.comment, user);
@@ -37,13 +40,13 @@ module.exports.run = async function() {
                     await golos.scanUserHistory("golos.loto", ticketScanner);
                     
                     if(!voteScanner.vote) {
-                        log.debug("not yet voted");
+                       log.info("not yet voted");
                        await golos.vote(user, key, "golos.loto", scanner.comment.permlink, 100);
                     }
                     
                     if(!ticketScanner.ticket) {
                         let guess = makeAGuess();
-                        log.debug("not yet guessed, but will " + guess);
+                        log.info("not yet guessed, but will " + guess);
                         await golos.comment(user, key, scanner.comment.author,  scanner.comment.permlink, guess);
                     }       
                 }
