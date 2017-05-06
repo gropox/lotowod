@@ -89,7 +89,7 @@ async function scanUserHistory(userid, scanner) {
                     }
                 }
             }
-            log.debug("terminate = " + terminate);
+            log.debug("scanning done = " + terminate);
             if(terminate) {
                 break;
             }

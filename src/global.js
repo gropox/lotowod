@@ -29,7 +29,7 @@ function init() {
     try {
         let sets = JSON.parse(fs.readFileSync(CONFIG_FILE, "utf8"));
         module.exports.settings = sets;  
-        console.log("loaded settings:\n" + JSON.stringify(module.exports.settings, null, 4));     
+        //console.log("loaded settings:\n" + JSON.stringify(module.exports.settings, null, 4));     
     } catch(e) {
         console.warn("unable to read config (" + CONFIG_FILE + ")");
         try {
