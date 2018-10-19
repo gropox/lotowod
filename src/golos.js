@@ -1,117 +1,64 @@
-var log = require("./logger").getLogger(__filename, 12);
+const global = require("basescript");
+const log = global.getLogger("golos");
+const CONFIG = global.CONFIG;
 
-var steem = require("steem");
-var global = require("./global");
-var Scanner = require("./scanner");
+const golosjs = require("golos-js");
 
-steem.config.set('websocket',global.settings.golos_websocket);
-steem.config.set('address_prefix',"GLS");
-steem.config.set('chain_id','782a3039b478c839e4cb0c941ff4eaeb7df40bdd68bd441afd444b9da763de12');
-
-log.debug(steem.config.get('websocket'));
-
-var lastRetrievedProps = 0;
-
-
-var props = {};
-
-/** holt properties */
-async function retrieveDynGlobProps() {
-    props = await steem.api.getDynamicGlobalPropertiesAsync();
+if(CONFIG.ws) {
+    golosjs.config.set("websocket", CONFIG.ws);
 }
 
-/** time in milliseconds */
-async function getCurrentServerTimeAndBlock() {
-    await retrieveDynGlobProps();
-    if(props.time) { 
-        return {
-            time : Date.parse(props.time), 
-            block : props.head_block_number 
-        };
+const HIST_BLOCK = 10000;
+
+async function scanUserHistory(userid, scanner, filter) {
+
+    let start = -1;
+    let count = HIST_BLOCK;
+    while (start === -1 || start > 0) {
+        log.debug("get history", start, count);
+        let userHistory = await golosjs.api.getAccountHistoryAsync(userid, start, count, filter);
+        if (!(userHistory instanceof Array)) {
+            return;
+        }
+
+        if (userHistory.length == 0) {
+            return;
+        }
+        let firstReadId = userHistory[0][0];
+        let terminate = false;
+        for (let h = 0; h < userHistory.length; h++) {
+            if (scanner.process(userHistory[h])) {
+                if (!terminate) {
+                    terminate = true;
+                }
+            }
+        }
+        start = firstReadId - 1;
+        if (terminate || start <= 0) {
+            break;
+        }
+        count = (start > HIST_BLOCK) ? HIST_BLOCK : start;
     }
-    throw "Current time could not be retrieved";
 }
 
-module.exports.getCurrentServerTimeAndBlock = getCurrentServerTimeAndBlock;
-
-async function getContent(permlink) {
-    log.debug("retrive content for user " + USERID + " " + permlink);
-    var content = await steem.api.getContentAsync(USERID, permlink);
-    if(permlink == content.permlink) {
-        return content;
-    } 
-    return null;
+module.exports.vote = async (voter, key, permlink) => {
+    await golosjs.broadcast.voteAsync(key, voter, "golos.loto", permlink, 10000);
 }
 
-module.exports.getContent = getContent;
-
-async function vote(userid, key, author, permlink, weight) {
-    await steem.broadcast.voteAsync(key, userid, author, permlink, weight * 100);
-}
-
-async function comment(userid, key, parent_author, parent_permlink, comment) {
-    let permlink = "re-"+parent_author.replace(/\./g,"") 
-        + "-" + parent_permlink + "-" 
+module.exports.comment = async (author, key, parent_permlink, body) => {
+    let permlink = "re-golos-loto-" + parent_permlink + "-" 
         + new Date().toISOString().toLowerCase().replace(/[-.:]/g,"");
     
-    await steem.broadcast.commentAsync(key, 
-        parent_author, parent_permlink, 
-        userid, permlink, "", comment,
+    await golosjs.broadcast.commentAsync(key, 
+        "golos.loto", parent_permlink, 
+        author, permlink, "", body,
         {
             tags: ["ru--lotereya"]
         });
 }
 
-module.exports.comment = comment;
-module.exports.vote = vote;
-
-async function scanUserHistory(userid, scanner) {
-
-        //scan user history backwards, and collect transfers
-        let start = -1;
-        let count = 500;
-        log.debug("scan history, userid = " + userid);
-        while(start == -1 || start > 0) {
-            log.debug("\n\n\nget history start = "+ start + ", count = " + count);
-            let userHistory = await steem.api.getAccountHistoryAsync(userid, start, count);
-            if(!(userHistory instanceof Array)) {
-                log.error("not an array");
-                return;
-            }
-            let firstReadId = userHistory[0][0];
-            log.debug("first id = " + firstReadId);
-            let terminate = false;
-            for(let h = 0; h < userHistory.length; h++) {
-                log.trace("check hist id " + userHistory[h][0] + " / " + userHistory[h][1].op[0]);
-                if(scanner.process(userHistory[h])) {
-                    if(!terminate) {
-                        terminate = true;
-                    }
-                }
-            }
-            log.debug("scanning done = " + terminate);
-            if(terminate) {
-                break;
-            }
-            start = firstReadId;
-            count = (start > 500)?500:start;
-        }
+module.exports.getActiveVotes = async (comment) => {
+    return golosjs.api.getActiveVotesAsync(comment.author, comment.permlink, -1);
 }
 
 module.exports.scanUserHistory = scanUserHistory;
-
-
-module.exports.getExceptionCause = function(e) {
-    if(e.cause && e.cause.payload && e.cause.payload.error) {
-        let m = e.cause.payload.error.message; 
-        if(m) {
-            let am = m.split("\n");
-            m = am[0];
-            for(let i = 1; i < am.length && i < 3; i++) {
-                m += ": " + am[i];
-            }
-            return m;
-        }
-    }
-    return e;
-}
