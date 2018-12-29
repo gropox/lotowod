@@ -70,7 +70,7 @@ async function run() {
             log.error(e);
         }  
 
-        await global.sleep(1000*61*10); //sleep 5 minutes   
+        await global.sleep(1000*60*30); //sleep 5 minutes   
     }
 }
 

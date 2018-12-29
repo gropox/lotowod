@@ -1,5 +1,5 @@
-var log = require("./logger").getLogger(__filename, 12);
-var global = require("./global");
+var global = require("basescript");
+const log = global.getLogger("scanner");
 
 class Scanner {
 
